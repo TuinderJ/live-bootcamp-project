@@ -36,9 +36,9 @@ impl TestApp {
             .expect("Failed to execute request.")
     }
 
-    pub async fn get_route(&self, route: &str) -> reqwest::Response {
+    pub async fn post_route(&self, route: &str) -> reqwest::Response {
         self.http_client
-            .get(format!("{}/{}", &self.address, route))
+            .post(format!("{}/{}", &self.address, route))
             .send()
             .await
             .expect("Failed to execute request.")
