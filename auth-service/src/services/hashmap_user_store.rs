@@ -1,14 +1,7 @@
+use crate::domain::data_stores::UserStore;
 use std::collections::HashMap;
 
-use crate::domain::user::User;
-
-#[derive(Debug, PartialEq)]
-pub enum UserStoreError {
-    UserAlreadyExists,
-    UserNotFound,
-    InvalidCredentials,
-    UnexpectedError,
-}
+use crate::domain::{data_stores::UserStoreError, user::User};
 
 #[derive(Default, Debug, PartialEq)]
 pub struct HashmapUserStore {
@@ -21,7 +14,11 @@ impl HashmapUserStore {
             users: HashMap::new(),
         }
     }
-    pub fn add_user(&mut self, user: User) -> Result<(), UserStoreError> {
+}
+
+#[async_trait::async_trait]
+impl UserStore for HashmapUserStore {
+    async fn add_user(&mut self, user: User) -> Result<(), UserStoreError> {
         if self.users.contains_key(&user.email) {
             return Err(UserStoreError::UserAlreadyExists);
         }
@@ -29,11 +26,11 @@ impl HashmapUserStore {
         Ok(())
     }
 
-    pub fn get_user(&self, email: &str) -> Result<&User, UserStoreError> {
+    async fn get_user(&self, email: &str) -> Result<&User, UserStoreError> {
         self.users.get(email).ok_or(UserStoreError::UserNotFound)
     }
 
-    pub fn validate_user(&self, email: &str, password: &str) -> Result<(), UserStoreError> {
+    async fn validate_user(&self, email: &str, password: &str) -> Result<(), UserStoreError> {
         let user = self.users.get(email);
         if user.is_none() {
             return Err(UserStoreError::UserNotFound);
@@ -61,7 +58,7 @@ mod tests {
             users: HashMap::new(),
         };
         let user = User::new("asdf@asdf.com".to_string(), "password123".to_string(), true);
-        user_store.add_user(user).unwrap();
+        user_store.add_user(user).await.unwrap();
 
         assert_eq!(user_store, test_user_store, "Failed");
     }
@@ -74,11 +71,11 @@ mod tests {
         let user = User::new("asdf@asdf.com".to_string(), "password123".to_string(), true);
         user_store.users.insert(user.email.clone(), user);
 
-        let user = user_store.get_user("asdf@asdf.com").unwrap();
+        let user = user_store.get_user("asdf@asdf.com").await.unwrap();
         let test_user = User::new("asdf@asdf.com".to_string(), "password123".to_string(), true);
         assert_eq!(user, &test_user, "Failed to get valid user");
 
-        let user = user_store.get_user("asdf");
+        let user = user_store.get_user("asdf").await;
         assert_eq!(
             user,
             Err(UserStoreError::UserNotFound),
@@ -94,10 +91,12 @@ mod tests {
         let user = User::new("asdf@asdf.com".to_string(), "password123".to_string(), true);
         user_store.users.insert(user.email.clone(), user);
 
-        let validate = user_store.validate_user("asdf@asdf.com", "password123");
+        let validate = user_store
+            .validate_user("asdf@asdf.com", "password123")
+            .await;
         assert_eq!(validate, Ok(()), "Failed to validate a valid user.");
 
-        let validate = user_store.validate_user("asdf", "password123");
+        let validate = user_store.validate_user("asdf", "password123").await;
         assert_eq!(
             validate,
             Err(UserStoreError::UserNotFound),
@@ -105,7 +104,7 @@ mod tests {
             validate
         );
 
-        let validate = user_store.validate_user("asdf@asdf.com", "password");
+        let validate = user_store.validate_user("asdf@asdf.com", "password").await;
         assert_eq!(
             validate,
             Err(UserStoreError::InvalidCredentials),
