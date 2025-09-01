@@ -44,11 +44,7 @@ async fn signup_should_return_201_if_valid_input() {
     });
 
     let response = app.post_signup(&test_case).await;
-    assert_eq!(
-        response.status().as_u16(),
-        201,
-        "Did not receive status code 201."
-    );
+    assert_eq!(response.status().as_u16(), 201);
 
     let expected_response = SignupResponse {
         message: "User created successfully!".to_owned(),
@@ -58,8 +54,7 @@ async fn signup_should_return_201_if_valid_input() {
             .json::<SignupResponse>()
             .await
             .expect("Could not deserialize response body to UserBody"),
-        expected_response,
-        "Received incorrect response message."
+        expected_response
     );
 }
 
