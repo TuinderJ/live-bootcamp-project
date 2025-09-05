@@ -1,21 +1,32 @@
 use crate::{
     app_state::AppState,
-    domain::{AuthAPIError, Email, Password, User, UserStoreError},
+    domain::{AuthAPIError, Email, Password, UserStoreError},
+    utils::auth::generate_auth_cookie,
 };
 use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
+use axum_extra::extract::CookieJar;
 use serde::{Deserialize, Serialize};
 
 pub async fn login(
     State(state): State<AppState>,
+    jar: CookieJar,
     Json(request): Json<LoginRequest>,
-) -> Result<impl IntoResponse, AuthAPIError> {
-    let email = Email::parse(request.email).map_err(|_| AuthAPIError::InvalidCredentials)?;
-    let password =
-        Password::parse(request.password).map_err(|_| AuthAPIError::InvalidCredentials)?;
+) -> (CookieJar, Result<impl IntoResponse, AuthAPIError>) {
+    let email = Email::parse(request.email);
+    if email.is_err() {
+        return (jar, Err(AuthAPIError::InvalidCredentials));
+    }
+    let email = email.unwrap();
+
+    let password = Password::parse(request.password);
+    if password.is_err() {
+        return (jar, Err(AuthAPIError::InvalidCredentials));
+    }
+    let password = password.unwrap();
 
     let user_store = state.user_store.write().await;
 
-    user_store
+    if let Err(e) = user_store
         .validate_user(email.as_ref(), password.as_ref())
         .await
         .map_err(|e| match e {
@@ -23,13 +34,24 @@ pub async fn login(
             UserStoreError::InvalidCredentials => AuthAPIError::IncorrectCredentials,
             UserStoreError::UnexpectedError => AuthAPIError::UnexpectedError,
             _ => AuthAPIError::UnexpectedError,
-        })?;
+        })
+    {
+        return (jar, Err(e));
+    }
 
     let response = Json(LoginResponse {
         message: "Login successful".to_string(),
     });
 
-    Ok((StatusCode::OK, response))
+    let auth_cookie = generate_auth_cookie(&email);
+    if auth_cookie.is_err() {
+        return (jar, Err(AuthAPIError::UnexpectedError));
+    }
+    let auth_cookie = auth_cookie.unwrap();
+
+    let updated_jar = jar.add(auth_cookie);
+
+    (updated_jar, Ok((StatusCode::OK, response)))
 }
 
 #[derive(Deserialize, Serialize, Debug, PartialEq)]

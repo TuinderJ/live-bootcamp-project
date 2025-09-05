@@ -19,7 +19,7 @@ async fn login_should_return_200_if_valid_credentials() {
     let response = app.post_login(&body).await;
     assert_eq!(
         response.status().as_u16(),
-        206,
+        200,
         "Failed for input: {:?}",
         body
     );
