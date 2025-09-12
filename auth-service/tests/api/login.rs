@@ -25,31 +25,6 @@ async fn should_return_200_if_valid_credentials() {
     );
 }
 
-//#[tokio::test]
-async fn should_return_206_if_2fa_is_required() {
-    let app = TestApp::new().await;
-
-    app.post_signup(&serde_json::json!({
-        "email": "login@mail.com",
-        "password": "password123",
-        "requires2FA": true
-    }))
-    .await;
-
-    let body = serde_json::json!({
-        "email": "login@mail.com",
-        "password": "password123",
-    });
-
-    let response = app.post_login(&body).await;
-    assert_eq!(
-        response.status().as_u16(),
-        206,
-        "Failed for input: {:?}",
-        body
-    );
-}
-
 #[tokio::test]
 async fn should_return_400_if_invalid_inupt() {
     let app = TestApp::new().await;
