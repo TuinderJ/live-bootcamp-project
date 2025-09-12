@@ -1,7 +1,7 @@
 use crate::helpers::TestApp;
 
 #[tokio::test]
-async fn verify_2fa_should_return_200() {
+async fn should_return_200() {
     let app = TestApp::new().await;
 
     let response = app.post_route("verify-2fa").await;

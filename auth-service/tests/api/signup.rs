@@ -2,7 +2,7 @@ use crate::helpers::{get_random_email, TestApp};
 use auth_service::{routes::SignupResponse, ErrorResponse};
 
 #[tokio::test]
-async fn signup_should_return_422_if_malformed_input() {
+async fn should_return_422_if_malformed_input() {
     let app = TestApp::new().await;
 
     let random_email = get_random_email();
@@ -32,7 +32,7 @@ async fn signup_should_return_422_if_malformed_input() {
 }
 
 #[tokio::test]
-async fn signup_should_return_201_if_valid_input() {
+async fn should_return_201_if_valid_input() {
     let app = TestApp::new().await;
 
     let random_email = get_random_email();
@@ -59,7 +59,7 @@ async fn signup_should_return_201_if_valid_input() {
 }
 
 #[tokio::test]
-async fn signup_should_return_400_if_invalid_input() {
+async fn should_return_400_if_invalid_input() {
     let app = TestApp::new().await;
 
     let random_email = get_random_email();
@@ -96,7 +96,7 @@ async fn signup_should_return_400_if_invalid_input() {
 }
 
 #[tokio::test]
-async fn signup_should_return_409_if_email_already_exists() {
+async fn should_return_409_if_email_already_exists() {
     let app = TestApp::new().await;
 
     let random_email = get_random_email();
