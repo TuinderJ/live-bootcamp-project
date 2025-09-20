@@ -1,8 +1,6 @@
 use auth_service::{
     app_state::AppState,
-    services::{
-        hashmap_user_store::HashmapUserStore, hashset_banned_token_store::HashsetBannedTokenStore,
-    },
+    services::{HashmapTwoFACodeStore, HashmapUserStore, HashsetBannedTokenStore, MockEmailClient},
     utils::constants::prod,
     Application,
 };
@@ -11,11 +9,11 @@ use tokio::sync::RwLock;
 
 #[tokio::main]
 async fn main() {
-    let user_store = HashmapUserStore::new();
-    let banned_token_store = HashsetBannedTokenStore::new();
     let app_state = AppState::new(
-        Arc::new(RwLock::new(user_store)),
-        Arc::new(RwLock::new(banned_token_store)),
+        Arc::new(RwLock::new(HashmapUserStore::new())),
+        Arc::new(RwLock::new(HashsetBannedTokenStore::new())),
+        Arc::new(RwLock::new(HashmapTwoFACodeStore::new())),
+        Arc::new(RwLock::new(MockEmailClient)),
     );
     let app = Application::build(app_state, prod::APP_ADDRESS)
         .await

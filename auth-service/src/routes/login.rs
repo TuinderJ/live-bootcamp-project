@@ -1,6 +1,6 @@
 use crate::{
     app_state::AppState,
-    domain::{AuthAPIError, Email, Password, UserStoreError},
+    domain::{AuthAPIError, Email, LoginAttemptId, Password, TwoFACode, UserStoreError},
     utils::auth::generate_auth_cookie,
 };
 use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
@@ -12,19 +12,16 @@ pub async fn login(
     jar: CookieJar,
     Json(request): Json<LoginRequest>,
 ) -> (CookieJar, Result<impl IntoResponse, AuthAPIError>) {
-    let email = Email::parse(request.email);
-    if email.is_err() {
-        return (jar, Err(AuthAPIError::InvalidCredentials));
-    }
-    let email = email.unwrap();
+    let email = match Email::parse(request.email) {
+        Ok(val) => val,
+        Err(_) => return (jar, Err(AuthAPIError::InvalidCredentials)),
+    };
+    let password = match Password::parse(request.password) {
+        Ok(val) => val,
+        Err(_) => return (jar, Err(AuthAPIError::InvalidCredentials)),
+    };
 
-    let password = Password::parse(request.password);
-    if password.is_err() {
-        return (jar, Err(AuthAPIError::InvalidCredentials));
-    }
-    let password = password.unwrap();
-
-    let user_store = state.user_store.write().await;
+    let user_store = state.user_store.read().await;
 
     if let Err(e) = user_store
         .validate_user(email.as_ref(), password.as_ref())
@@ -32,31 +29,97 @@ pub async fn login(
         .map_err(|e| match e {
             UserStoreError::UserNotFound => AuthAPIError::IncorrectCredentials,
             UserStoreError::InvalidCredentials => AuthAPIError::IncorrectCredentials,
-            UserStoreError::UnexpectedError => AuthAPIError::UnexpectedError,
             _ => AuthAPIError::UnexpectedError,
         })
     {
         return (jar, Err(e));
     }
 
-    let response = Json(LoginResponse {
-        message: "Login successful".to_string(),
-    });
+    let user = match user_store.get_user(email.as_ref()).await {
+        Ok(user) => user,
+        Err(_) => return (jar, Err(AuthAPIError::IncorrectCredentials)),
+    };
 
-    let auth_cookie = generate_auth_cookie(&email);
-    if auth_cookie.is_err() {
-        return (jar, Err(AuthAPIError::UnexpectedError));
+    match user.requires_2fa {
+        true => handle_2fa(&user.email, &state, jar).await,
+        false => handle_no_2fa(&user.email, jar).await,
     }
-    let auth_cookie = auth_cookie.unwrap();
+}
+
+async fn handle_2fa(
+    email: &Email,
+    state: &AppState,
+    jar: CookieJar,
+) -> (
+    CookieJar,
+    Result<(StatusCode, Json<LoginResponse>), AuthAPIError>,
+) {
+    let login_attempt_id = LoginAttemptId::default();
+    let two_fa_code = TwoFACode::default();
+    let email_client = state.email_client.read().await;
+
+    match state
+        .two_fa_code_store
+        .write()
+        .await
+        .add_code(email.clone(), login_attempt_id.clone(), two_fa_code.clone())
+        .await
+    {
+        Ok(_) => {
+            if email_client
+                .send_email(email, "2FA Code", two_fa_code.as_ref())
+                .await
+                .is_err()
+            {
+                return (jar, Err(AuthAPIError::UnexpectedError));
+            }
+            (
+                jar,
+                Ok((
+                    StatusCode::PARTIAL_CONTENT,
+                    Json(LoginResponse::TwoFactorAuth(TwoFactorAuthResponse {
+                        message: "2FA required".to_string(),
+                        login_attempt_id: login_attempt_id.as_ref().to_string(),
+                    })),
+                )),
+            )
+        }
+        Err(_) => (jar, Err(AuthAPIError::UnexpectedError)),
+    }
+}
+
+async fn handle_no_2fa(
+    email: &Email,
+    jar: CookieJar,
+) -> (
+    CookieJar,
+    Result<(StatusCode, Json<LoginResponse>), AuthAPIError>,
+) {
+    let auth_cookie = match generate_auth_cookie(email) {
+        Ok(val) => val,
+        Err(_) => return (jar, Err(AuthAPIError::UnexpectedError)),
+    };
 
     let updated_jar = jar.add(auth_cookie);
 
-    (updated_jar, Ok((StatusCode::OK, response)))
+    (
+        updated_jar,
+        Ok((StatusCode::OK, Json(LoginResponse::RegularAuth))),
+    )
 }
 
-#[derive(Deserialize, Serialize, Debug, PartialEq)]
-pub struct LoginResponse {
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(untagged)]
+pub enum LoginResponse {
+    RegularAuth,
+    TwoFactorAuth(TwoFactorAuthResponse),
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct TwoFactorAuthResponse {
     pub message: String,
+    #[serde(rename = "loginAttemptId")]
+    pub login_attempt_id: String,
 }
 
 #[derive(Deserialize)]

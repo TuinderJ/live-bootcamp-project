@@ -22,6 +22,13 @@ async fn should_return_200_if_valid_jwt_cookie() {
     );
 
     assert_eq!(app.post_logout().await.status().as_u16(), 200);
+    assert!(
+        app.banned_token_store
+            .read()
+            .await
+            .contains_token(cookie.value().to_string())
+            .await
+    );
 }
 
 #[tokio::test]

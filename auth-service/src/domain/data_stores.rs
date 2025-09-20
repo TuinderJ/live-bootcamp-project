@@ -1,4 +1,6 @@
-use super::user::User;
+use super::{Email, User};
+use serde::Serialize;
+use uuid::Uuid;
 
 #[async_trait::async_trait]
 pub trait UserStore {
@@ -25,4 +27,74 @@ pub trait BannedTokenStore {
 pub enum BannedTokenStoreError {
     TokenAlreadyBanned,
     InvalidToken,
+}
+
+#[async_trait::async_trait]
+pub trait TwoFACodeStore {
+    async fn add_code(
+        &mut self,
+        email: Email,
+        login_attempt_id: LoginAttemptId,
+        code: TwoFACode,
+    ) -> Result<(), TwoFACodeStoreError>;
+    async fn get_code(
+        &self,
+        email: &Email,
+    ) -> Result<(LoginAttemptId, TwoFACode), TwoFACodeStoreError>;
+    async fn remove_code(&mut self, email: &Email) -> Result<(), TwoFACodeStoreError>;
+}
+
+#[derive(Debug, PartialEq)]
+pub enum TwoFACodeStoreError {
+    LoginAttemptIdNotFound,
+    UnexpectedError,
+}
+
+#[derive(Serialize, Debug, Clone, PartialEq)]
+pub struct LoginAttemptId(String);
+
+impl LoginAttemptId {
+    pub fn parse(id: String) -> Result<Self, String> {
+        match Uuid::parse_str(&id) {
+            Ok(val) => Ok(Self(val.to_string())),
+            Err(_) => Err("Could not parse login attempt id".to_string()),
+        }
+    }
+}
+
+impl Default for LoginAttemptId {
+    fn default() -> Self {
+        Self(Uuid::new_v4().to_string())
+    }
+}
+
+impl AsRef<str> for LoginAttemptId {
+    fn as_ref(&self) -> &str {
+        &self.0
+    }
+}
+
+#[derive(Serialize, Clone, Debug, PartialEq)]
+pub struct TwoFACode(String);
+
+impl TwoFACode {
+    pub fn parse(code: String) -> Result<Self, String> {
+        if code.len() == 6 {
+            Ok(Self(code))
+        } else {
+            Err("Invalid 2FA code".to_string())
+        }
+    }
+}
+
+impl Default for TwoFACode {
+    fn default() -> Self {
+        Self(rand::random_range(100_000..=999_999).to_string())
+    }
+}
+
+impl AsRef<str> for TwoFACode {
+    fn as_ref(&self) -> &str {
+        &self.0
+    }
 }

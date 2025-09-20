@@ -1,7 +1,11 @@
 use crate::helpers::TestApp;
+use auth_service::{
+    domain::{Email, LoginAttemptId},
+    routes::TwoFactorAuthResponse,
+};
 
 #[tokio::test]
-async fn should_return_200_if_valid_credentials() {
+async fn should_return_200_if_2fa_is_not_required() {
     let app = TestApp::new().await;
 
     app.post_signup(&serde_json::json!({
@@ -22,6 +26,48 @@ async fn should_return_200_if_valid_credentials() {
         200,
         "Failed for input: {:?}",
         body
+    );
+}
+
+#[tokio::test]
+async fn should_return_206_if_2fa_is_required() {
+    let app = TestApp::new().await;
+
+    app.post_signup(&serde_json::json!({
+        "email": "login@mail.com",
+        "password": "password123",
+        "requires2FA": true
+    }))
+    .await;
+
+    let body = serde_json::json!({
+        "email": "login@mail.com",
+        "password": "password123",
+    });
+
+    let response = app.post_login(&body).await;
+    assert_eq!(
+        response.status().as_u16(),
+        206,
+        "Failed for input: {:?}",
+        body
+    );
+
+    let json_body = response
+        .json::<TwoFactorAuthResponse>()
+        .await
+        .expect("Could not deserialize response body to TwoFactorAuthResponse");
+
+    assert_eq!(json_body.message, "2FA required".to_owned());
+    assert_eq!(
+        app.two_fa_code_store
+            .read()
+            .await
+            .get_code(&Email::parse("login@mail.com".to_string()).expect("Failed to parse email"))
+            .await
+            .unwrap()
+            .0,
+        LoginAttemptId::parse(json_body.login_attempt_id).unwrap()
     );
 }
 
