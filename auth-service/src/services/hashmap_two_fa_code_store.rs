@@ -25,7 +25,7 @@ impl TwoFACodeStore for HashmapTwoFACodeStore {
         login_attempt_id: LoginAttemptId,
         code: TwoFACode,
     ) -> Result<(), TwoFACodeStoreError> {
-        if self.codes.contains_key(email.as_ref()) {
+        if self.codes.contains_key(email.as_ref()) && self.remove_code(&email).await.is_err() {
             return Err(TwoFACodeStoreError::UnexpectedError);
         }
         self.codes
