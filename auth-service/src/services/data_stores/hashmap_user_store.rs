@@ -1,4 +1,4 @@
-use crate::domain::data_stores::UserStore;
+use crate::domain::{data_stores::UserStore, Email, Password};
 use std::collections::HashMap;
 
 use crate::domain::{User, UserStoreError};
@@ -26,16 +26,23 @@ impl UserStore for HashmapUserStore {
         Ok(())
     }
 
-    async fn get_user(&self, email: &str) -> Result<&User, UserStoreError> {
-        self.users.get(email).ok_or(UserStoreError::UserNotFound)
+    async fn get_user(&self, email: &Email) -> Result<User, UserStoreError> {
+        match self.users.get(email.as_ref()) {
+            Some(user) => Ok(user.clone()),
+            None => Err(UserStoreError::UserNotFound),
+        }
     }
 
-    async fn validate_user(&self, email: &str, password: &str) -> Result<(), UserStoreError> {
-        let user = self.users.get(email);
+    async fn validate_user(
+        &self,
+        email: &Email,
+        password: &Password,
+    ) -> Result<(), UserStoreError> {
+        let user = self.users.get(email.as_ref());
         if user.is_none() {
             return Err(UserStoreError::UserNotFound);
         };
-        if user.unwrap().password.as_ref() != password {
+        if &user.unwrap().password != password {
             return Err(UserStoreError::InvalidCredentials);
         };
         Ok(())
@@ -88,20 +95,16 @@ mod tests {
             .users
             .insert(user.email.as_ref().to_string(), user);
 
-        let user = user_store.get_user("asdf@asdf.com").await.unwrap();
+        let user = user_store
+            .get_user(&Email::parse("asdf@asdf.com".to_string()).unwrap())
+            .await
+            .unwrap();
         let test_user = User::new(
             Email::parse("asdf@asdf.com".to_string()).unwrap(),
             Password::parse("password123".to_string()).unwrap(),
             true,
         );
-        assert_eq!(user, &test_user, "Failed to get valid user");
-
-        let user = user_store.get_user("asdf").await;
-        assert_eq!(
-            user,
-            Err(UserStoreError::UserNotFound),
-            "Retrieved user with invalid input."
-        );
+        assert_eq!(user, test_user, "Failed to get valid user");
     }
 
     #[tokio::test]
@@ -119,19 +122,19 @@ mod tests {
             .insert(user.email.as_ref().to_string(), user);
 
         let validate = user_store
-            .validate_user("asdf@asdf.com", "password123")
+            .validate_user(
+                &Email::parse("asdf@asdf.com".to_string()).unwrap(),
+                &Password::parse("password123".to_string()).unwrap(),
+            )
             .await;
         assert_eq!(validate, Ok(()), "Failed to validate a valid user.");
 
-        let validate = user_store.validate_user("asdf", "password123").await;
-        assert_eq!(
-            validate,
-            Err(UserStoreError::UserNotFound),
-            "Didn't receive UserNotFound error. Received: {:?}",
-            validate
-        );
-
-        let validate = user_store.validate_user("asdf@asdf.com", "password").await;
+        let validate = user_store
+            .validate_user(
+                &Email::parse("asdf@asdf.com".to_string()).unwrap(),
+                &Password::parse("password".to_string()).unwrap(),
+            )
+            .await;
         assert_eq!(
             validate,
             Err(UserStoreError::InvalidCredentials),

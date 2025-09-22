@@ -24,7 +24,7 @@ pub async fn login(
     let user_store = state.user_store.read().await;
 
     if let Err(e) = user_store
-        .validate_user(email.as_ref(), password.as_ref())
+        .validate_user(&email, &password)
         .await
         .map_err(|e| match e {
             UserStoreError::UserNotFound => AuthAPIError::IncorrectCredentials,
@@ -35,7 +35,7 @@ pub async fn login(
         return (jar, Err(e));
     }
 
-    let user = match user_store.get_user(email.as_ref()).await {
+    let user = match user_store.get_user(&email).await {
         Ok(user) => user,
         Err(_) => return (jar, Err(AuthAPIError::IncorrectCredentials)),
     };

@@ -1,12 +1,16 @@
+use crate::domain::Password;
+
 use super::{Email, User};
+use rand::{thread_rng, Rng};
 use serde::Serialize;
 use uuid::Uuid;
 
 #[async_trait::async_trait]
 pub trait UserStore {
     async fn add_user(&mut self, user: User) -> Result<(), UserStoreError>;
-    async fn get_user(&self, email: &str) -> Result<&User, UserStoreError>;
-    async fn validate_user(&self, email: &str, password: &str) -> Result<(), UserStoreError>;
+    async fn get_user(&self, email: &Email) -> Result<User, UserStoreError>;
+    async fn validate_user(&self, email: &Email, password: &Password)
+        -> Result<(), UserStoreError>;
 }
 
 #[derive(Debug, PartialEq)]
@@ -89,7 +93,8 @@ impl TwoFACode {
 
 impl Default for TwoFACode {
     fn default() -> Self {
-        Self(rand::random_range(100_000..=999_999).to_string())
+        let mut rng = thread_rng();
+        Self(rng.gen_range(100_000..=999_999).to_string())
     }
 }
 
