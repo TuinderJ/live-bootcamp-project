@@ -2277,6 +2277,7 @@ dependencies = [
 [[package]]
 name = "test_helpers"
 version = "0.1.0"
+source = "git+https://github.com/letsgetrusty/test-helpers.git#c1110f07f8de3b4ba181b130b3040df5a0e96a86"
 dependencies = [
  "quote",
  "syn 2.0.106",
