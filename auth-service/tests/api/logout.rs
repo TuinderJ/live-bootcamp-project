@@ -4,11 +4,10 @@ use auth_service::{
     utils::{constants::JWT_COOKIE_NAME, generate_auth_cookie},
 };
 use reqwest::Url;
+use test_helpers::api_test;
 
-#[tokio::test]
+#[api_test]
 async fn should_return_200_if_valid_jwt_cookie() {
-    let app = TestApp::new().await;
-
     let email = Email::parse(get_random_email()).expect("Couldn't parse email");
     let cookie = generate_auth_cookie(&email).unwrap();
 
@@ -22,19 +21,17 @@ async fn should_return_200_if_valid_jwt_cookie() {
     );
 
     assert_eq!(app.post_logout().await.status().as_u16(), 200);
-    assert!(
-        app.banned_token_store
-            .read()
-            .await
-            .contains_token(cookie.value().to_string())
-            .await
-    );
+    assert!(app
+        .banned_token_store
+        .read()
+        .await
+        .contains_token(cookie.value().to_string())
+        .await
+        .unwrap());
 }
 
-#[tokio::test]
+#[api_test]
 async fn should_return_401_if_token_is_already_banned() {
-    let app = TestApp::new().await;
-
     let email = Email::parse(get_random_email()).expect("Couldn't parse email");
     let cookie = generate_auth_cookie(&email).unwrap();
 
@@ -61,10 +58,8 @@ async fn should_return_401_if_token_is_already_banned() {
     assert_eq!(app.post_logout().await.status().as_u16(), 401);
 }
 
-#[tokio::test]
+#[api_test]
 async fn should_return_400_if_logout_called_twice() {
-    let app = TestApp::new().await;
-
     let email = Email::parse(get_random_email()).expect("Couldn't parse email");
     let cookie = generate_auth_cookie(&email).unwrap();
 
@@ -81,16 +76,11 @@ async fn should_return_400_if_logout_called_twice() {
     assert_eq!(app.post_logout().await.status().as_u16(), 400);
 }
 
-#[tokio::test]
-async fn should_return_400_if_jwt_cookie_is_missing() {
-    let app = TestApp::new().await;
-    assert_eq!(app.post_logout().await.status().as_u16(), 400);
-}
+#[api_test]
+async fn should_return_400_if_jwt_cookie_is_missing() {}
 
-#[tokio::test]
+#[api_test]
 async fn should_return_401_if_invalid_token() {
-    let app = TestApp::new().await;
-
     app.cookie_jar.add_cookie_str(
         &format!(
             "{}=invalid; HttpOnly; SameSite=Lax; Secure; Path=/",

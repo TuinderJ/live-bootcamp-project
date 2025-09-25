@@ -3,11 +3,10 @@ use auth_service::{
     domain::{Email, LoginAttemptId},
     routes::TwoFactorAuthResponse,
 };
+use test_helpers::api_test;
 
-#[tokio::test]
+#[api_test]
 async fn should_return_200_if_2fa_is_not_required() {
-    let app = TestApp::new().await;
-
     app.post_signup(&serde_json::json!({
         "email": "requires2fa@mail.com",
         "password": "password123",
@@ -29,10 +28,8 @@ async fn should_return_200_if_2fa_is_not_required() {
     );
 }
 
-#[tokio::test]
+#[api_test]
 async fn should_return_206_if_2fa_is_required() {
-    let app = TestApp::new().await;
-
     app.post_signup(&serde_json::json!({
         "email": "login@mail.com",
         "password": "password123",
@@ -71,10 +68,8 @@ async fn should_return_206_if_2fa_is_required() {
     );
 }
 
-#[tokio::test]
+#[api_test]
 async fn should_return_400_if_invalid_inupt() {
-    let app = TestApp::new().await;
-
     let test_cases = [
         serde_json::json!({
             "email": "invalid",
@@ -97,10 +92,8 @@ async fn should_return_400_if_invalid_inupt() {
     }
 }
 
-#[tokio::test]
+#[api_test]
 async fn should_return_401_if_incorrect_credentials() {
-    let app = TestApp::new().await;
-
     app.post_signup(&serde_json::json!({
         "email": "requires2fa@mail.com",
         "password": "password123",
@@ -137,10 +130,8 @@ async fn should_return_401_if_incorrect_credentials() {
     }
 }
 
-#[tokio::test]
+#[api_test]
 async fn should_return_422_if_malformed_credentials() {
-    let app = TestApp::new().await;
-
     let test_cases = [
         serde_json::json!({
             "mail": "invalid@mail.com",
@@ -156,9 +147,8 @@ async fn should_return_422_if_malformed_credentials() {
     ];
 
     for test_case in test_cases.iter() {
-        let response = app.post_login(test_case).await;
         assert_eq!(
-            response.status().as_u16(),
+            app.post_login(test_case).await.status().as_u16(),
             422,
             "Failed for input: {:?}",
             test_case

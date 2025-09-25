@@ -20,8 +20,8 @@ impl BannedTokenStore for HashsetBannedTokenStore {
         self.tokens.insert(token);
         Ok(())
     }
-    async fn contains_token(&self, token: String) -> bool {
-        self.tokens.contains(&token)
+    async fn contains_token(&self, token: String) -> Result<bool, BannedTokenStoreError> {
+        Ok(self.tokens.contains(&token))
     }
 }
 
@@ -69,10 +69,16 @@ mod tests {
             .value()
             .to_string();
 
-        assert!(!test_banned_token_store.contains_token(token.clone()).await);
+        assert!(!test_banned_token_store
+            .contains_token(token.clone())
+            .await
+            .unwrap());
 
         test_banned_token_store.tokens.insert(token.to_string());
 
-        assert!(test_banned_token_store.contains_token(token.clone()).await);
+        assert!(test_banned_token_store
+            .contains_token(token.clone())
+            .await
+            .unwrap());
     }
 }

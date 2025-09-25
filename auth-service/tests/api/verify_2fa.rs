@@ -1,9 +1,9 @@
 use crate::helpers::{get_random_email, TestApp};
 use auth_service::{domain::Email, routes::LoginResponse};
+use test_helpers::api_test;
 
-#[tokio::test]
+#[api_test]
 async fn should_return_200_with_correct_code() {
-    let app = TestApp::new().await;
     let random_email = get_random_email();
 
     let test_case = serde_json::json!({
@@ -56,10 +56,8 @@ async fn should_return_200_with_correct_code() {
     assert_eq!(app.post_verify_2fa(&test_case).await.status().as_u16(), 200);
 }
 
-#[tokio::test]
+#[api_test]
 async fn should_return_400_with_invalid_input() {
-    let app = TestApp::new().await;
-
     let test_case = serde_json::json!({
         "email": "valid@mail.com",
         "loginAttemptId": "14",
@@ -69,9 +67,8 @@ async fn should_return_400_with_invalid_input() {
     assert_eq!(app.post_verify_2fa(&test_case).await.status().as_u16(), 400)
 }
 
-#[tokio::test]
+#[api_test]
 async fn should_return_401_with_incorrect_code() {
-    let app = TestApp::new().await;
     let random_email = get_random_email();
 
     let test_case = serde_json::json!({
@@ -115,9 +112,8 @@ async fn should_return_401_with_incorrect_code() {
     assert_eq!(app.post_verify_2fa(&test_case).await.status().as_u16(), 401);
 }
 
-#[tokio::test]
+#[api_test]
 async fn should_return_401_if_same_token_is_used_twice() {
-    let app = TestApp::new().await;
     let random_email = get_random_email();
 
     let test_case = serde_json::json!({
@@ -171,10 +167,8 @@ async fn should_return_401_if_same_token_is_used_twice() {
     assert_eq!(app.post_verify_2fa(&test_case).await.status().as_u16(), 401);
 }
 
-#[tokio::test]
+#[api_test]
 async fn should_return_422_with_invalid_input() {
-    let app = TestApp::new().await;
-
     let random_email = get_random_email();
 
     let test_case = serde_json::json!({

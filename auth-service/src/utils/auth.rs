@@ -58,6 +58,7 @@ pub async fn validate_token(
         .await
         .contains_token(token.to_string())
         .await
+        .map_err(|_| jsonwebtoken::errors::ErrorKind::InvalidToken)?
     {
         return Err(jsonwebtoken::errors::Error::from(
             jsonwebtoken::errors::ErrorKind::InvalidToken,

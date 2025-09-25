@@ -6,7 +6,7 @@ use argon2::{
     password_hash::SaltString, Algorithm, Argon2, Params, PasswordHash, PasswordHasher,
     PasswordVerifier, Version,
 };
-use sqlx::{query, query_as, PgPool};
+use sqlx::{query, PgPool};
 use std::error::Error;
 
 pub struct PostgresUserStore {

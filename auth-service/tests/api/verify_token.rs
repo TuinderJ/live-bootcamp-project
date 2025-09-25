@@ -1,10 +1,9 @@
 use crate::helpers::{get_random_email, TestApp};
 use auth_service::{domain::Email, utils::auth::generate_auth_cookie};
+use test_helpers::api_test;
 
-#[tokio::test]
+#[api_test]
 async fn should_return_422_if_malformed_input() {
-    let app = TestApp::new().await;
-
     let test_cases = [
         serde_json::json!({"invalid": "test"}),
         serde_json::json!({"tok": 13}),
@@ -18,10 +17,8 @@ async fn should_return_422_if_malformed_input() {
     }
 }
 
-#[tokio::test]
+#[api_test]
 async fn should_return_401_if_invalid_token() {
-    let app = TestApp::new().await;
-
     assert_eq!(
         app.post_verify_token(&serde_json::json!({"token": "1234"}))
             .await
@@ -31,10 +28,8 @@ async fn should_return_401_if_invalid_token() {
     );
 }
 
-#[tokio::test]
+#[api_test]
 async fn should_return_200_if_valid_token() {
-    let app = TestApp::new().await;
-
     let random_email = get_random_email();
     let email = Email::parse(random_email).expect("Failed to parse Email");
 
