@@ -4,7 +4,7 @@ use tower_http::services::ServeDir;
 #[tokio::main]
 async fn main() {
     let app = Router::new()
-        .nest_service("/", ServeDir::new("assets"))
+        .fallback_service(ServeDir::new("assets"))
         .route("/hello", get(hello_handler));
 
     // Here we are using ip 0.0.0.0 so the service is listening on all the configured network interfaces.
