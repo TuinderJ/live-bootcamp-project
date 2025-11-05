@@ -1,10 +1,11 @@
-use axum::{response::Html, routing::get, Router};
+use axum::{response::Html, routing::get, serve, Router};
 use tower_http::services::ServeDir;
 
 #[tokio::main]
 async fn main() {
+    let assets_dir = ServeDir::new("assets");
     let app = Router::new()
-        .fallback_service(ServeDir::new("assets"))
+        .fallback_service(assets_dir)
         .route("/hello", get(hello_handler));
 
     // Here we are using ip 0.0.0.0 so the service is listening on all the configured network interfaces.
