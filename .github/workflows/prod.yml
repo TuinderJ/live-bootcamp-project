@@ -17,6 +17,6 @@ jobs:
         echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
         ssh-keyscan -H ${{ secrets.SSH_HOST }} > ~/.ssh/known_hosts
     - name: connect and pull
-      run: ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "cd ${{ secrets.WORK_DIR }} && git checkout ${{ secrets.MAIN_BRANCH }} && git pull origin main && export "JWT_SECRET=${{ secrets.JWT_SECRET }}" && export "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}" && docker-compose build && docker-compose up"
+      run: ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "cd ${{ secrets.WORK_DIR }} && git checkout ${{ secrets.MAIN_BRANCH }} && git pull origin main && export "JWT_SECRET=${{ secrets.JWT_SECRET }}" && export "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}" && export "DATABASE_URL=${{ secrets.DATABASE_URL }}" && export "SQLX_OFFLINE=true" && docker-compose build && docker-compose up"
     - name: cleanup
       run: rm -rf ~/.ssh
