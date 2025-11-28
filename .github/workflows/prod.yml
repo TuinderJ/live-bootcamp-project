@@ -116,7 +116,7 @@ jobs:
       with:
         host: ${{ secrets.SSH_HOST }}
         username: root
-        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
         script: |
           cd ~
           export JWT_SECRET=${{ secrets.JWT_SECRET }}
