@@ -109,17 +109,17 @@ jobs:
       run: sudo apt-get install sshpass
 
     - name: Copy compose.yml to droplet
-      run: sshpass -v scp -o StrictHostKeyChecking=no compose.yml root@${{ vars.SSH_HOST }}:~
+      run: sshpass -v scp -o StrictHostKeyChecking=no compose.yml root@${{ secrets.SSH_HOST }}:~
 
     - name: Deploy
       uses: appleboy/ssh-action@master
       with:
-        host: ${{ vars.SSH_HOST }}
+        host: ${{ secrets.SSH_HOST }}
         username: root
         script: |
           cd ~
           export JWT_SECRET=${{ secrets.JWT_SECRET }}
-          export AUTH_SERVICE_IP=${{ vars.SSH_HOST }}
+          export AUTH_SERVICE_IP=${{ secrets.SSH_HOST }}
           export POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
           docker compose down
           docker compose pull
